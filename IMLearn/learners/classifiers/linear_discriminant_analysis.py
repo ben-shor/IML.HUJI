@@ -46,7 +46,29 @@ class LDA(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        self.classes_ = np.unique(y)
+        pi_list = []
+        mu_list = []
+        total_cov = None
+
+        for k in self.classes_:
+            class_samples = X[y == k]
+
+            pi_list.append(class_samples.shape[0] / y.shape[0])
+
+            # based on recitation 6 page 9
+            mu_list.append(class_samples.mean(axis=0))
+            x_minus_mu = class_samples - mu_list[-1]
+            class_cov = (x_minus_mu.T @ x_minus_mu)
+            total_cov = class_cov if total_cov is None else class_cov + total_cov
+
+        total_cov = (1 / (X.shape[0] - len(self.classes_))) * total_cov
+
+        self.pi_ = np.array(pi_list)
+        self.mu_ = np.array(mu_list)
+
+        self.cov_ = total_cov
+        self._cov_inv = inv(total_cov)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -62,7 +84,7 @@ class LDA(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        return np.array([self.classes_[k] for k in np.argmax(self.likelihood(X), axis=1)])
 
     def likelihood(self, X: np.ndarray) -> np.ndarray:
         """
@@ -82,7 +104,13 @@ class LDA(BaseEstimator):
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
 
-        raise NotImplementedError()
+        # based on recitation 6 page 7
+        scores = []
+        for k, class_name in enumerate(self.classes_):
+            scores.append(np.log(self.pi_[k])
+                          + X @ self._cov_inv @ self.mu_[k]
+                          - 0.5 * self.mu_[k].T @ self._cov_inv @ self.mu_[k])
+        return np.array(scores).T
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -102,4 +130,4 @@ class LDA(BaseEstimator):
             Performance under missclassification loss function
         """
         from ...metrics import misclassification_error
-        raise NotImplementedError()
+        return misclassification_error(y, self.predict(X))

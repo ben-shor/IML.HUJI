@@ -38,14 +38,19 @@ def run_perceptron():
     """
     for n, f in [("Linearly Separable", "linearly_separable.npy"), ("Linearly Inseparable", "linearly_inseparable.npy")]:
         # Load dataset
-        raise NotImplementedError()
+        X, y = load_dataset(f"../datasets/{f}")
 
         # Fit Perceptron and record loss in each fit iteration
         losses = []
-        raise NotImplementedError()
+        percepton = Perceptron(callback=lambda p, a, b: losses.append(p.loss(X, y)))
+        percepton.fit(X, y)
 
         # Plot figure of loss as function of fitting iteration
-        raise NotImplementedError()
+        go.Figure([go.Scatter(x=list(range(len(losses))), y=losses, mode='markers+lines',
+                              name=r'$loss$')],
+                  layout=go.Layout(title="loss for iteration number",
+                                   xaxis_title="iteration number",
+                                   yaxis_title="loss")).show()
 
 
 def get_ellipse(mu: np.ndarray, cov: np.ndarray):
@@ -70,7 +75,7 @@ def get_ellipse(mu: np.ndarray, cov: np.ndarray):
     xs = (l1 * np.cos(theta) * np.cos(t)) - (l2 * np.sin(theta) * np.sin(t))
     ys = (l1 * np.sin(theta) * np.cos(t)) + (l2 * np.cos(theta) * np.sin(t))
 
-    return go.Scatter(x=mu[0] + xs, y=mu[1] + ys, mode="lines", marker_color="black")
+    return go.Scatter(x=mu[0] + xs, y=mu[1] + ys, mode="lines", marker_color="black", showlegend=False)
 
 
 def compare_gaussian_classifiers():
@@ -79,25 +84,60 @@ def compare_gaussian_classifiers():
     """
     for f in ["gaussian1.npy", "gaussian2.npy"]:
         # Load dataset
-        raise NotImplementedError()
+        X, y = load_dataset(f"../datasets/{f}")
 
         # Fit models and predict over training set
-        raise NotImplementedError()
+        lda_classifier = LDA()
+        lda_classifier.fit(X, y)
+        lda_predict = lda_classifier.predict(X)
+
+        gnb_classifier = GaussianNaiveBayes()
+        gnb_classifier.fit(X, y)
+        gnb_predict = gnb_classifier.predict(X)
 
         # Plot a figure with two suplots, showing the Gaussian Naive Bayes predictions on the left and LDA predictions
         # on the right. Plot title should specify dataset used and subplot titles should specify algorithm and accuracy
         # Create subplots
         from IMLearn.metrics import accuracy
-        raise NotImplementedError()
+        fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.01, vertical_spacing=.03,
+                            subplot_titles=[f"LDA classifier, accuracy: {accuracy(y, lda_predict)}",
+                                            f"Gaussian Naive Bayes classifier, accuracy: {accuracy(y, gnb_predict)}"])
+
+        fig.update_layout(title=f"Classifiers for dataset: {f}")
+
 
         # Add traces for data-points setting symbols and colors
-        raise NotImplementedError()
+        fig.add_trace(
+            go.Scatter(x=X[:,0], y=X[:,1], mode="markers", showlegend=False,
+                       marker=dict(color=lda_predict, symbol=y, line=dict(color="black", width=1))),
+            1, 1)
+
+        fig.add_trace(
+            go.Scatter(x=X[:,0], y=X[:,1], mode="markers", showlegend=False,
+                       marker=dict(color=gnb_predict, symbol=y, line=dict(color="black", width=1))),
+            1, 2)
 
         # Add `X` dots specifying fitted Gaussians' means
-        raise NotImplementedError()
+        fig.add_trace(
+            go.Scatter(x=lda_classifier.mu_[:,0], y=lda_classifier.mu_[:,1], mode="markers", showlegend=False,
+                       marker=dict(color="black", symbol="x", size=20)),
+            1, 1)
+
+        fig.add_trace(
+            go.Scatter(x=gnb_classifier.mu_[:,0], y=gnb_classifier.mu_[:,1], mode="markers", showlegend=False,
+                       marker=dict(color="black", symbol="x", size=20)),
+            1, 2)
 
         # Add ellipses depicting the covariances of the fitted Gaussians
-        raise NotImplementedError()
+        fig.add_trace(get_ellipse(lda_classifier.mu_[0], lda_classifier.cov_), 1, 1)
+        fig.add_trace(get_ellipse(lda_classifier.mu_[1], lda_classifier.cov_), 1, 1)
+        fig.add_trace(get_ellipse(lda_classifier.mu_[2], lda_classifier.cov_), 1, 1)
+
+        fig.add_trace(get_ellipse(gnb_classifier.mu_[0], np.diag(gnb_classifier.vars_[0])), 1, 2)
+        fig.add_trace(get_ellipse(gnb_classifier.mu_[1], np.diag(gnb_classifier.vars_[1])), 1, 2)
+        fig.add_trace(get_ellipse(gnb_classifier.mu_[2], np.diag(gnb_classifier.vars_[2])), 1, 2)
+
+        fig.show()
 
 
 if __name__ == '__main__':
