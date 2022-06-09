@@ -3,6 +3,8 @@ from typing import NoReturn
 from ...base import BaseEstimator
 import numpy as np
 
+from ...metrics import mean_square_error
+
 
 class RidgeRegression(BaseEstimator):
     """
@@ -59,7 +61,16 @@ class RidgeRegression(BaseEstimator):
         -----
         Fits model with or without an intercept depending on value of `self.include_intercept_`
         """
-        raise NotImplementedError()
+        id_matrix = np.identity(X.shape[1])
+        if self.include_intercept_:
+            X = np.c_[np.ones(X.shape[0]), X]
+            id_matrix = np.identity(X.shape[1])
+            # According to forum, we don't want to penalize the intercept, so we make it corresponding value 0
+            id_matrix[0][0] = 0
+
+        # We know from the book(pg. 138) that: ridge=(X^TX+lambdaI
+        # calculate using the psuedo-inverse of X (works both for invertible and not invertible)
+        self.coefs_ = np.linalg.pinv(X.T @ X + self.lam_ * id_matrix) @ X.T @ y
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -75,7 +86,10 @@ class RidgeRegression(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        if self.include_intercept_:
+            X = np.c_[np.ones(X.shape[0]), X]
+
+        return X @ self.coefs_
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -94,4 +108,4 @@ class RidgeRegression(BaseEstimator):
         loss : float
             Performance under MSE loss function
         """
-        raise NotImplementedError()
+        return mean_square_error(self._predict(X), y)
