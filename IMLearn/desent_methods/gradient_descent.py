@@ -3,7 +3,7 @@ from typing import Callable, NoReturn
 import numpy as np
 
 from IMLearn.base import BaseModule, BaseLR
-from .learning_rate import FixedLR
+from .learning_rate import FixedLR, ExponentialLR
 
 OUTPUT_VECTOR_TYPE = ["last", "best", "average"]
 
@@ -119,4 +119,27 @@ class GradientDescent:
                 Euclidean norm of w^(t)-w^(t-1)
 
         """
-        raise NotImplementedError()
+
+        weights_history = [f.weights]
+        values = []
+        for i in range(self.max_iter_):
+            grad = f.compute_jacobian(X=X, y=y)
+            eta = self.learning_rate_.lr_step(t=i)
+            f.weights = f.weights - eta * grad
+
+            weights_history.append(f.weights)
+            values.append(f.compute_output(X=X, y=y))
+
+            self.callback_(solver=self, weights=weights_history[-1], val=f.compute_output(X=X, y=y), grad=grad, t=i,
+                           eta=eta, delta=np.linalg.norm(weights_history[-1] - weights_history[-2]))
+
+            if np.linalg.norm(weights_history[-1] - weights_history[-2]) < self.tol_:
+                print(f"Stopped after:{i} ")
+                break
+
+        if self.out_type_ == "best":
+            return weights_history[min(range(len(values)), key=lambda x: values[x])]
+        elif self.out_type_ == "average":
+            return np.sum(weights_history, axis=0) / len(weights_history)
+
+        return weights_history[-1]
